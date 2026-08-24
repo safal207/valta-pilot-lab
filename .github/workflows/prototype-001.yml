@@ -1,0 +1,26 @@
+name: Prototype 001 verify_action
+
+on:
+  push:
+    paths:
+      - 'prototypes/verify_action/**'
+      - '.github/workflows/prototype-001.yml'
+  pull_request:
+    paths:
+      - 'prototypes/verify_action/**'
+      - '.github/workflows/prototype-001.yml'
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run Prototype 001 tests
+        working-directory: prototypes/verify_action
+        run: python -m unittest -v test_valta_verify.py
+      - name: Run machine-readable demo
+        working-directory: prototypes/verify_action
+        run: python demo.py
