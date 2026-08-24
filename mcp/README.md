@@ -1,48 +1,71 @@
 # MCP / ChatGPT Integration Track
 
-This directory is reserved for the smallest useful Valta integration surface for ChatGPT and other MCP-capable agent environments.
+This track exposes the Valta pilot verifier to MCP-capable hosts without changing the underlying decision contract.
+
+## Current prototype
+
+Prototype 002 lives in `prototypes/verify_action/mcp_server.py` and uses the current stable MCP Python SDK v2.
+
+It exposes one tool:
+
+- `verify_action`
+
+The tool accepts a proposed financial action plus an explicit prototype policy snapshot and returns structured decision evidence:
+
+```text
+ALLOW | BLOCK | INCONCLUSIVE
+reason_code
+policy_version
+evidence_ref
+execution_boundary
+```
 
 ## Product objective
 
 Let a user or agent ask Valta to evaluate a financially meaningful action without leaving the conversation.
 
-Example interaction:
-
 ```text
-user/agent -> Valta tool -> policy/authorization evaluation -> allow/block -> evidence
+user/agent
+  -> MCP verify_action
+  -> Valta deterministic verifier
+  -> allow/block/inconclusive
+  -> evidence reference
 ```
 
-## Minimal tool surface
+## Run locally
 
-Potential first tools:
+From the repository root:
 
-- `check_policy`
-- `verify_action`
-- `get_proof`
+```bash
+python -m pip install -r prototypes/verify_action/requirements-mcp.txt
+python prototypes/verify_action/mcp_server.py
+```
 
-Do not add payment execution until the control and evidence contract is clear.
+The server uses stateless Streamable HTTP with JSON responses. The decision path itself does not read wall-clock time.
 
-## First demo target
+For development with the MCP Inspector, the SDK CLI can also be installed with `mcp[cli]`.
 
-A convincing first demo should show:
+## Prototype boundary
 
-1. one requested action;
-2. the relevant policy/context;
-3. an allow or block decision;
-4. evidence explaining the decision;
-5. a clear boundary between decision evidence and actual downstream execution.
+This is deliberately **not** production payment infrastructure.
+
+- policy state is supplied explicitly for reproducibility;
+- duplicate tracking uses an in-process prototype ledger;
+- no wallet keys or real payment execution are present;
+- `ALLOW` is a policy decision, not proof that downstream execution happened;
+- `execution_boundary` remains `EXTERNAL_UNVERIFIED` unless observed evidence is explicitly supplied.
+
+Production work must replace the in-memory ledger and caller-supplied policy with authenticated, durable Valta state before any exactly-once or live-freshness guarantee is made.
 
 ## Economic role
 
-The ChatGPT/MCP integration is initially treated as a distribution and product-demonstration surface, not as the validated revenue model.
-
-The intended funnel is:
+The ChatGPT/MCP integration is initially a distribution and demonstration surface, not the validated revenue model.
 
 ```text
 try Valta in an existing AI environment
   -> identify a production-relevant workflow
   -> paid pilot
-  -> measurable ROI
+  -> measurable protected value / ROI
   -> recurring enterprise use
 ```
 
