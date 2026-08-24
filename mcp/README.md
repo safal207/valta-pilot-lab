@@ -4,9 +4,9 @@ This track exposes the Valta pilot verifier to MCP-capable hosts without changin
 
 ## Current prototype
 
-Prototype 002 lives in `prototypes/verify_action/mcp_server.py` and uses the current stable MCP Python SDK v2.
+Prototype 003 builds on the MCP v2 wrapper in `prototypes/verify_action/mcp_server.py` and adds a deployment-ready ASGI surface in `prototypes/verify_action/remote_app.py`.
 
-It exposes one tool:
+It exposes one MCP tool:
 
 - `verify_action`
 
@@ -20,13 +20,22 @@ evidence_ref
 execution_boundary
 ```
 
+Remote service endpoints:
+
+```text
+GET /health
+/mcp
+```
+
+See [`deploy.md`](deploy.md) for the container, hostname allowlist, environment variables, and security boundary.
+
 ## Product objective
 
 Let a user or agent ask Valta to evaluate a financially meaningful action without leaving the conversation.
 
 ```text
 user/agent
-  -> MCP verify_action
+  -> remote MCP verify_action
   -> Valta deterministic verifier
   -> allow/block/inconclusive
   -> evidence reference
@@ -38,12 +47,19 @@ From the repository root:
 
 ```bash
 python -m pip install -r prototypes/verify_action/requirements-mcp.txt
-python prototypes/verify_action/mcp_server.py
+cd prototypes/verify_action
+uvicorn remote_app:app --host 127.0.0.1 --port 8000
 ```
 
-The server uses stateless Streamable HTTP with JSON responses. The decision path itself does not read wall-clock time.
+Then:
 
-For development with the MCP Inspector, the SDK CLI can also be installed with `mcp[cli]`.
+```bash
+curl http://127.0.0.1:8000/health
+```
+
+The MCP endpoint is `http://127.0.0.1:8000/mcp`.
+
+The server uses stateless Streamable HTTP with JSON responses. The decision path itself does not read wall-clock time.
 
 ## Prototype boundary
 
@@ -52,6 +68,7 @@ This is deliberately **not** production payment infrastructure.
 - policy state is supplied explicitly for reproducibility;
 - duplicate tracking uses an in-process prototype ledger;
 - no wallet keys or real payment execution are present;
+- no production account authentication is implemented yet;
 - `ALLOW` is a policy decision, not proof that downstream execution happened;
 - `execution_boundary` remains `EXTERNAL_UNVERIFIED` unless observed evidence is explicitly supplied.
 

@@ -1,0 +1,50 @@
+name: Prototype 003 Remote MCP
+
+on:
+  pull_request:
+    paths:
+      - "prototypes/verify_action/**"
+      - "mcp/**"
+      - ".github/workflows/prototype-003.yml"
+  push:
+    branches: [main]
+    paths:
+      - "prototypes/verify_action/**"
+      - "mcp/**"
+      - ".github/workflows/prototype-003.yml"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install MCP runtime
+        run: python -m pip install -r prototypes/verify_action/requirements-mcp.txt
+      - name: Run all prototype tests
+        run: python -m unittest discover -s prototypes/verify_action -p "test_*.py" -v
+      - name: Compile prototype
+        run: python -m compileall prototypes/verify_action
+
+  container-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build container
+        run: docker build -t valta-pilot-lab -f prototypes/verify_action/Dockerfile .
+      - name: Start container and check health
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name valta-mcp -p 18080:8000 valta-pilot-lab
+          trap 'docker logs valta-mcp || true; docker rm -f valta-mcp || true' EXIT
+          for attempt in {1..30}; do
+            if curl -fsS http://127.0.0.1:18080/health; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "health check did not become ready"
+          exit 1
