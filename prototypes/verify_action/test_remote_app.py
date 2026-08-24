@@ -4,7 +4,7 @@ import unittest
 
 import httpx2
 
-from remote_app import LOCAL_HOSTS, build_app, deployment_security
+from remote_app import LOCAL_HOSTS, build_app, deployment_security, mcp
 
 
 class RemoteAppConfigTests(unittest.TestCase):
@@ -51,18 +51,19 @@ class RemoteAppHTTPTests(unittest.IsolatedAsyncioTestCase):
             allowed_origins=[],
         )
         transport = httpx2.ASGITransport(app=app, raise_app_exceptions=False)
-        async with httpx2.AsyncClient(
-            transport=transport,
-            base_url="https://evil.example.com",
-        ) as client:
-            response = await client.post(
-                "/mcp",
-                json={},
-                headers={
-                    "Accept": "application/json, text/event-stream",
-                    "Content-Type": "application/json",
-                },
-            )
+        async with mcp.session_manager.run():
+            async with httpx2.AsyncClient(
+                transport=transport,
+                base_url="https://evil.example.com",
+            ) as client:
+                response = await client.post(
+                    "/mcp",
+                    json={},
+                    headers={
+                        "Accept": "application/json, text/event-stream",
+                        "Content-Type": "application/json",
+                    },
+                )
 
         self.assertEqual(response.status_code, 421)
 
@@ -72,18 +73,19 @@ class RemoteAppHTTPTests(unittest.IsolatedAsyncioTestCase):
             allowed_origins=[],
         )
         transport = httpx2.ASGITransport(app=app, raise_app_exceptions=False)
-        async with httpx2.AsyncClient(
-            transport=transport,
-            base_url="https://mcp.example.com",
-        ) as client:
-            response = await client.post(
-                "/mcp",
-                json={},
-                headers={
-                    "Accept": "application/json, text/event-stream",
-                    "Content-Type": "application/json",
-                },
-            )
+        async with mcp.session_manager.run():
+            async with httpx2.AsyncClient(
+                transport=transport,
+                base_url="https://mcp.example.com",
+            ) as client:
+                response = await client.post(
+                    "/mcp",
+                    json={},
+                    headers={
+                        "Accept": "application/json, text/event-stream",
+                        "Content-Type": "application/json",
+                    },
+                )
 
         # The empty body is not a valid MCP request, but a configured public Host
         # must get past transport-security rather than fail with 421.
