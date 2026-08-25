@@ -1,0 +1,70 @@
+{
+  "schema_version": "valta-action-assurance-bundle/v0.1",
+  "sample_only": true,
+  "not_a_production_signature": true,
+  "bundle_id": "sample:creator-payout-timeout-retry:001",
+  "workflow": "fan_payment_to_creator_payout_reconciliation",
+  "action_request": {
+    "logical_intent_id": "payout-intent-42",
+    "action_id": "payout-intent-42-attempt-1",
+    "actor": "payout-agent",
+    "operation": "release_creator_payout",
+    "target": "creator-218",
+    "amount_minor": 500000,
+    "currency": "USD",
+    "policy_version": "payout-policy-v7",
+    "policy_epoch": 7,
+    "checked_at": "2026-08-25T14:00:00Z",
+    "authorization_expires_at": "2026-08-25T14:05:00Z",
+    "request_digest": "sha256:2b78bfe8d8e8c941c44e7a0c0a29e0e9e33b8b4c67f9c1905f88650f146c2f0d"
+  },
+  "decision_record": {
+    "verdict": "ALLOW",
+    "reason_code": "POLICY_OK",
+    "exact_request_binding": true,
+    "freshness_status": "CURRENT",
+    "replay_status": "FRESH",
+    "evidence_ref": "sha256:409d3563690bf04c79ce49bd1d8307380c2889a03b90e75268c4d471cb58507b",
+    "execution_boundary": "EXTERNAL_UNVERIFIED",
+    "terminal_success": false,
+    "note": "Authorization allows dispatch but does not prove downstream execution."
+  },
+  "execution_receipt": {
+    "status": "OBSERVED",
+    "executor_ref": "sandbox-payout-adapter",
+    "external_operation_id": "processor-op-8842",
+    "idempotency_key": "payout-intent-42",
+    "observed_at": "2026-08-25T14:00:03Z",
+    "side_effect_count": 1,
+    "receipt_digest": "sha256:54b093f624e22f90b39f82bdf0c253b882d6da2e36ce711de815b795bb35931d"
+  },
+  "outcome_receipt": {
+    "terminal_status": "SUCCEEDED",
+    "final_economic_state": "PAID_AND_RECONCILED",
+    "observed_at": "2026-08-25T14:00:08Z",
+    "observed_views": {
+      "payment_status": "CAPTURED",
+      "creator_balance": "DEBITED_FOR_PAYOUT",
+      "payout_status": "PAID",
+      "reversal_status": "NONE",
+      "history_status": "RECONCILED"
+    },
+    "outcome_digest": "sha256:2917818e7293373d5c8ed5908e52cb0d937f758b61ef6a9f354b4a7659ae5748"
+  },
+  "replay_probe": {
+    "action_id": "payout-intent-42-attempt-1",
+    "verdict": "BLOCK",
+    "reason_code": "DUPLICATE_OR_REPLAY",
+    "additional_economic_effects": 0
+  },
+  "integrity_notes": [
+    "The exact action request is bound before execution.",
+    "The retry cannot create a second economic effect.",
+    "Authorization and observed outcome remain separate records.",
+    "All identifiers and digests are illustrative public-sample values."
+  ],
+  "signature": {
+    "scheme": "NONE_SAMPLE_ONLY",
+    "value": null
+  }
+}
