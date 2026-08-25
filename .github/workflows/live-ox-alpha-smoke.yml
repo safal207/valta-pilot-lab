@@ -1,0 +1,54 @@
+name: Live Ox Alpha smoke test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Require OpenRouter secret
+        run: test -n "$OPENROUTER_API_KEY"
+      - name: Run synthetic Ox Alpha to Valta smoke test
+        working-directory: prototypes/verify_action
+        run: |
+          python - <<'PY'
+          from decimal import Decimal
+          from ox_alpha_adapter import propose_action, proposal_to_request
+          from valta_verify import ActionLedger, Policy, verify_action
+
+          prompt = (
+              "Synthetic test only. Propose exactly one payment action for actor agent-1 "
+              "to pay vendor-a USD 25. Return only the required structured action JSON."
+          )
+          proposal = propose_action(prompt)
+          request = proposal_to_request(
+              proposal,
+              policy_version="pilot-v1",
+              checked_at="2026-08-25T15:00:00+00:00",
+          )
+          policy = Policy(
+              version="pilot-v1",
+              allowed_actions=frozenset({"pay"}),
+              allowed_targets=frozenset({"vendor-a"}),
+              max_amount=Decimal("50"),
+          )
+          decision = verify_action(request, policy, ActionLedger())
+          print({
+              "model": "stealth/ox-alpha",
+              "proposal": proposal.to_dict(),
+              "valta_decision": decision.to_dict(),
+          })
+          assert decision.verdict == "ALLOW", decision.to_dict()
+          assert decision.execution_boundary == "EXTERNAL_UNVERIFIED"
+          PY
