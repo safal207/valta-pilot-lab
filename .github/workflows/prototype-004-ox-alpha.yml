@@ -1,0 +1,25 @@
+name: Prototype 004 Ox Alpha
+
+on:
+  pull_request:
+    paths:
+      - "prototypes/verify_action/ox_alpha.py"
+      - "prototypes/verify_action/test_ox_alpha.py"
+      - ".github/workflows/prototype-004-ox-alpha.yml"
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install pytest
+        run: python -m pip install pytest
+      - name: Run Ox Alpha adapter tests
+        working-directory: prototypes/verify_action
+        run: python -m pytest -q test_ox_alpha.py test_valta_verify.py
+      - name: Compile
+        run: python -m compileall -q prototypes/verify_action
