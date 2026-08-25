@@ -23,32 +23,36 @@ jobs:
         working-directory: prototypes/verify_action
         run: |
           python - <<'PY'
+          from dataclasses import asdict
           from decimal import Decimal
-          from ox_alpha_adapter import propose_action, proposal_to_request
-          from valta_verify import ActionLedger, Policy, verify_action
+          from ox_alpha import evaluate_proposal, propose_action
+          from valta_verify import ActionLedger, Policy
 
           prompt = (
-              "Synthetic test only. Propose exactly one payment action for actor agent-1 "
-              "to pay vendor-a USD 25. Return only the required structured action JSON."
+              "Synthetic test only. Propose exactly one payment action with these exact values: "
+              "actor=agent-1, action=pay, target=vendor-a, amount=25, "
+              "action_id=smoke-001, policy_version=pilot-v1, "
+              "checked_at=2026-08-25T15:00:00+00:00. "
+              "Return only the required structured action JSON."
           )
           proposal = propose_action(prompt)
-          request = proposal_to_request(
-              proposal,
-              policy_version="pilot-v1",
-              checked_at="2026-08-25T15:00:00+00:00",
-          )
           policy = Policy(
               version="pilot-v1",
               allowed_actions=frozenset({"pay"}),
               allowed_targets=frozenset({"vendor-a"}),
               max_amount=Decimal("50"),
           )
-          decision = verify_action(request, policy, ActionLedger())
+          decision = evaluate_proposal(proposal, policy, ActionLedger())
           print({
               "model": "stealth/ox-alpha",
-              "proposal": proposal.to_dict(),
+              "proposal": asdict(proposal),
               "valta_decision": decision.to_dict(),
           })
+          assert proposal.actor == "agent-1"
+          assert proposal.action == "pay"
+          assert proposal.target == "vendor-a"
+          assert proposal.amount == Decimal("25")
+          assert proposal.policy_version == "pilot-v1"
           assert decision.verdict == "ALLOW", decision.to_dict()
           assert decision.execution_boundary == "EXTERNAL_UNVERIFIED"
           PY
