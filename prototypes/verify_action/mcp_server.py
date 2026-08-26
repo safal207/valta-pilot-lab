@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from decimal import Decimal
 
 from mcp.server import MCPServer
@@ -8,7 +9,7 @@ from valta_verify import ActionLedger, ActionRequest, Policy, verify_action as v
 
 
 mcp = MCPServer("Valta Pilot Lab")
-_server_ledger = ActionLedger()
+_server_ledger = ActionLedger(db_path=os.getenv("VALTA_ACTION_DB", ":memory:"))
 
 
 def evaluate_mcp_request(
@@ -31,7 +32,10 @@ def evaluate_mcp_request(
 
     Policy data is explicit in the prototype so a recorded tool call contains the
     policy snapshot needed to reproduce its decision. Production code should
-    resolve an authenticated policy snapshot from durable Valta state instead.
+    resolve an authenticated policy snapshot from durable state instead.
+
+    This wrapper evaluates only. An ALLOW verdict must still be durably reserved
+    through the lifecycle API before any external dispatch.
     """
 
     active_ledger = ledger if ledger is not None else _server_ledger
@@ -73,8 +77,8 @@ def verify_action(
     """Evaluate a proposed financial action and return a reproducible verdict.
 
     `amount` and `max_amount` are decimal strings to avoid binary floating-point
-    ambiguity. This tool proves the policy decision only; downstream execution is
-    reported as unverified unless the caller explicitly supplies observed evidence.
+    ambiguity. This tool proves the policy decision only; it does not reserve,
+    dispatch, observe, reconcile, or finalize an external effect.
     """
 
     return evaluate_mcp_request(

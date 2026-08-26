@@ -66,15 +66,21 @@ class MCPRoundTripTests(unittest.IsolatedAsyncioTestCase):
         )
         self.assertTrue(result.structured_content["evidence_ref"].startswith("sha256:"))
 
-    async def test_in_memory_mcp_round_trip_detects_duplicate(self):
-        args = {**BASE_ARGS, "action_id": "mcp-roundtrip-duplicate"}
+    async def test_repeated_mcp_evaluation_is_idempotent_not_execution(self):
+        args = {**BASE_ARGS, "action_id": "mcp-roundtrip-idempotent-evaluation"}
         async with Client(mcp, raise_exceptions=True) as client:
             first = await client.call_tool("verify_action", args)
             second = await client.call_tool("verify_action", args)
 
         self.assertEqual(first.structured_content["verdict"], "ALLOW")
-        self.assertEqual(second.structured_content["verdict"], "BLOCK")
-        self.assertEqual(second.structured_content["reason_code"], "DUPLICATE_ACTION_ID")
+        self.assertEqual(second.structured_content["verdict"], "ALLOW")
+        self.assertEqual(
+            first.structured_content["evidence_ref"],
+            second.structured_content["evidence_ref"],
+        )
+        self.assertEqual(
+            second.structured_content["execution_boundary"], "EXTERNAL_UNVERIFIED"
+        )
 
 
 if __name__ == "__main__":
