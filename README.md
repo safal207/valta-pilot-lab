@@ -6,6 +6,16 @@ Valta Pilot Lab is a working repository for testing one core business hypothesis
 
 The goal is not to prove that the technology is interesting. The goal is to prove that a customer will pay for reduced financial loss, tighter authorization, safer retries, clearer reconciliation, and verifiable execution evidence.
 
+## Live recovery kit
+
+The public, consent-based acquisition page is live at:
+
+- **[Ambiguous Payment Recovery Kit](https://ambiguous-payment-recovery-kit.lovable.app)**
+
+It contains the seven-question self-test, provider → rail → ledger proof model, four recovery verdicts, public sandbox result, downloadable proof materials, and partner attribution support.
+
+GitHub Pages remains an optional mirror after its one-time repository setting is enabled. Until then, use the Lovable URL for all public and partner traffic.
+
 ## Current thesis
 
 A useful first customer is a team whose automated systems or AI agents can trigger money-moving or paid actions: paid APIs, wallets, payouts, escrow, settlement, or other financially meaningful operations.
@@ -32,6 +42,8 @@ one workflow
 
 ## Repository map
 
+- `site/` — static mirror of the recovery-kit landing page.
+- `sales/` — PLF, proof-card, self-test, opt-in sequence, and JV partner assets.
 - `docs/economic-model-v0.1.md` — first economic hypothesis.
 - `docs/pilot-offer.md` — fixed-scope pilot offer.
 - `docs/success-metrics.md` — evidence and ROI measurement.
@@ -43,4 +55,4 @@ one workflow
 
 All pricing, ROI ratios, loss estimates, and market assumptions in this repository are hypotheses until validated with real paid pilot data.
 
-Do not commit customer secrets, production credentials, wallet keys, API keys, private transaction data, or non-public infrastructure details.
+Do not commit customer secrets, production credentials, wallet keys, API keys, private transaction data, subscriber addresses, or non-public infrastructure details.
