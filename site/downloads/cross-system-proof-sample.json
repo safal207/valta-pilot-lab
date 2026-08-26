@@ -1,0 +1,42 @@
+{
+  "schema": "verified-transition.cross-system-public-sample.v1",
+  "status": "PUBLIC_SANDBOX_SUMMARY",
+  "scenario": "concurrent-retry",
+  "question": "After an ambiguous dispatch, can the workflow prove zero, one, or unknown economic effects before retry?",
+  "input": {
+    "retry_attempts": 24,
+    "provider_response": "ACCEPTED"
+  },
+  "control_evidence": {
+    "durable_reservation_owners": 1,
+    "stale_or_duplicate_attempts_rejected": 23,
+    "current_fencing_generation_enforced": true
+  },
+  "economic_observation": {
+    "external_rail_effects": 1,
+    "linked_customer_ledger_postings": 1,
+    "provider_state_observed_separately": true
+  },
+  "verdict": "VERIFIED",
+  "next_action": "FINALIZE_AND_DO_NOT_RETRY",
+  "receipt_integrity": "PASS",
+  "claim_boundary": [
+    "sandbox adapter",
+    "durable reservation store",
+    "fencing enforcement at dispatch boundary",
+    "independent provider, rail, and ledger observation",
+    "hash-chain integrity verification"
+  ],
+  "non_claims": [
+    "not universal exactly-once execution",
+    "not production custody",
+    "not compliance certification",
+    "not a cryptographic attestation of arbitrary external systems",
+    "not a prevented-loss estimate"
+  ],
+  "reproduce": {
+    "repository": "https://github.com/safal207/valta-pilot-lab",
+    "working_directory": "prototypes/verify_action",
+    "command": "python cross_system_demo.py --scenario concurrent-retry --format text"
+  }
+}
