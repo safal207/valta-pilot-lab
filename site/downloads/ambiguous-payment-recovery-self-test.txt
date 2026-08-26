@@ -1,0 +1,59 @@
+AMBIGUOUS PAYMENT RECOVERY SELF-TEST
+Public diagnostic — no production data required
+
+PURPOSE
+Identify the exact transition where available evidence stops being sufficient
+for safe retry, finalization, or automated recovery.
+
+SCORING
+0 = Yes, with reproducible evidence.
+1 = Partly, manually, or only inside one system.
+2 = No, unknown, or not tested.
+
+QUESTIONS
+1. Is authorization bound to the exact amount, recipient, target, and action?
+   Score: __  Evidence: _______________________________________________
+
+2. Is one execution owner durably reserved before dispatch?
+   Score: __  Evidence: _______________________________________________
+
+3. Can an old worker be fenced after a timeout or restart?
+   Score: __  Evidence: _______________________________________________
+
+4. Is provider "accepted" kept separate from settlement finality?
+   Score: __  Evidence: _______________________________________________
+
+5. Can the external economic effect be observed independently?
+   Score: __  Evidence: _______________________________________________
+
+6. Does an unknown outcome block blind retry?
+   Score: __  Evidence: _______________________________________________
+
+7. Can another process replay the evidence and reach the same verdict?
+   Score: __  Evidence: _______________________________________________
+
+TOTAL: __ / 14
+
+INTERPRETATION
+0–3: The declared boundary is comparatively well defined. Pressure-test failure paths.
+4–8: Partial cross-system coverage. Identify manual handoffs and unsupported assumptions.
+9–14: High-value recovery candidate. A retry or finality decision may depend on guesswork.
+
+EVIDENCE INVENTORY
+Authorization evidence: ______________________________________________
+Reservation / owner evidence: ________________________________________
+Provider evidence: __________________________________________________
+External rail / recipient evidence: __________________________________
+Customer-ledger evidence: ____________________________________________
+Recovery owner/team: _________________________________________________
+Manual reconciliation time: __________________________________________
+
+ONE-SENTENCE OUTPUT
+"The transition that becomes unknown is _______________________________,
+and today the recovery decision is owned by ___________________________."
+
+CLAIM BOUNDARY
+This self-test does not certify security, compliance, accounting correctness,
+or universal exactly-once execution. It identifies a boundary to verify.
+Do not include credentials, transaction secrets, customer records, or
+non-public production evidence in any reply.
