@@ -7,6 +7,7 @@ from valta_verify import (
     ActionLedger,
     ActionRequest,
     Policy,
+    canonical_action_digest,
     verify_action,
 )
 
@@ -37,9 +38,11 @@ class VerifyActionTests(unittest.TestCase):
         return ActionRequest(**data)
 
     def test_normal_allowed_action(self):
-        decision = verify_action(self.request(), self.policy, self.ledger)
+        request = self.request()
+        decision = verify_action(request, self.policy, self.ledger)
         self.assertEqual(decision.verdict, ALLOW)
         self.assertEqual(decision.reason_code, "POLICY_SATISFIED")
+        self.assertEqual(decision.action_digest, canonical_action_digest(request))
         self.assertTrue(decision.evidence_ref.startswith("sha256:"))
 
     def test_policy_violating_action_is_blocked(self):
@@ -49,12 +52,18 @@ class VerifyActionTests(unittest.TestCase):
         self.assertEqual(decision.verdict, BLOCK)
         self.assertEqual(decision.reason_code, "AMOUNT_EXCEEDS_POLICY")
 
-    def test_retry_duplicate_is_detected(self):
+    def test_allow_does_not_consume_action_identity(self):
         first = verify_action(self.request(), self.policy, self.ledger)
         second = verify_action(self.request(), self.policy, self.ledger)
         self.assertEqual(first.verdict, ALLOW)
-        self.assertEqual(second.verdict, BLOCK)
-        self.assertEqual(second.reason_code, "DUPLICATE_ACTION_ID")
+        self.assertEqual(second.verdict, ALLOW)
+        self.assertFalse(self.ledger.contains("act-001"))
+
+    def test_explicitly_consumed_identity_is_detected(self):
+        self.ledger.record("act-001")
+        decision = verify_action(self.request(), self.policy, self.ledger)
+        self.assertEqual(decision.verdict, BLOCK)
+        self.assertEqual(decision.reason_code, "DUPLICATE_ACTION_ID")
 
     def test_stale_authorization_is_rejected(self):
         decision = verify_action(
@@ -72,6 +81,14 @@ class VerifyActionTests(unittest.TestCase):
         decision = verify_action(self.request(), self.policy, self.ledger)
         self.assertEqual(decision.verdict, ALLOW)
         self.assertEqual(decision.execution_boundary, "EXTERNAL_UNVERIFIED")
+
+    def test_checked_at_changes_evidence_not_action_identity(self):
+        first = self.request(checked_at="2026-08-24T09:00:00+00:00")
+        second = self.request(checked_at="2026-08-24T09:30:00+00:00")
+        self.assertEqual(canonical_action_digest(first), canonical_action_digest(second))
+        first_decision = verify_action(first, self.policy, self.ledger)
+        second_decision = verify_action(second, self.policy, self.ledger)
+        self.assertNotEqual(first_decision.evidence_ref, second_decision.evidence_ref)
 
 
 if __name__ == "__main__":
