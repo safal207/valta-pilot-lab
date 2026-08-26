@@ -2,13 +2,13 @@
 
 Status: ready for individual partner conversations  
 Goal: borrow trusted attention while building a consent-based owned audience  
-Default destination: `https://safal207.github.io/valta-pilot-lab/`
+Canonical live destination: **https://ambiguous-payment-recovery-kit.lovable.app/**
 
 ## Partnership principle
 
 A partner does **not** transfer an email list.
 
-The partner recommends a useful diagnostic to their audience. Interested readers opt in directly and voluntarily. Subscriber addresses are not shared back to the partner; only aggregate attribution may be reported.
+The partner recommends a useful diagnostic to an audience that already opted in to hear from them. Interested readers visit the public page and voluntarily request the kit. Subscriber identities are not shared back to the partner; aggregate attribution may be reported.
 
 ```text
 partner trust
@@ -37,18 +37,20 @@ A small, relevant, trusted audience is more valuable than a large generic one.
 
 ## Destination link
 
-Use one partner slug and a channel-specific UTM:
+Use one stable partner slug and channel-specific UTM values:
 
 ```text
-https://safal207.github.io/valta-pilot-lab/?ref={{partner_slug}}&utm_source={{channel}}&utm_medium=partner&utm_campaign=ambiguous-payment-recovery
+https://ambiguous-payment-recovery-kit.lovable.app/?ref={{partner_slug}}&utm_source={{channel}}&utm_medium=partner&utm_campaign=ambiguous-payment-recovery
 ```
 
 Examples:
 
 ```text
-?ref=ganiyu&utm_source=newsletter&utm_medium=partner&utm_campaign=ambiguous-payment-recovery
-?ref=community-x&utm_source=telegram&utm_medium=partner&utm_campaign=ambiguous-payment-recovery
-?ref=podcast-y&utm_source=podcast&utm_medium=partner&utm_campaign=ambiguous-payment-recovery
+https://ambiguous-payment-recovery-kit.lovable.app/?ref=ganiyu&utm_source=newsletter&utm_medium=partner&utm_campaign=ambiguous-payment-recovery
+
+https://ambiguous-payment-recovery-kit.lovable.app/?ref=community-x&utm_source=telegram&utm_medium=partner&utm_campaign=ambiguous-payment-recovery
+
+https://ambiguous-payment-recovery-kit.lovable.app/?ref=podcast-y&utm_source=podcast&utm_medium=partner&utm_campaign=ambiguous-payment-recovery
 ```
 
 ## One-line mention
@@ -77,7 +79,7 @@ provider accepted
 ≠ safe to retry
 ```
 
-An idempotency key may protect one service boundary. A webhook may accurately report the provider’s local state. Neither automatically proves the complete economic result across every system involved.
+An idempotency key may protect one service boundary. A webhook may accurately report the provider's local state. Neither automatically proves the complete economic result across every system involved.
 
 A safer model needs four explicit outcomes:
 
@@ -96,7 +98,7 @@ The free kit includes a seven-question self-test, one-page proof card, and machi
 
 ## Social post
 
-> “Accepted” is not the same as settled — and timeout is not proof that nothing happened. This 7-question payment-recovery self-test identifies where evidence breaks between provider, rail, recipient, and ledger: {{partner_link}}
+> “Accepted” is not the same as settled — and timeout is not proof that nothing happened. This seven-question recovery self-test identifies where evidence breaks between provider, rail, recipient, and ledger: {{partner_link}}
 
 ## Subject lines
 
@@ -175,14 +177,15 @@ Conditions:
 
 Before distribution, confirm:
 
+- the public URL loads without authentication or 404;
 - the audience opted in to hear from the partner;
 - the topic is relevant to that audience;
-- the destination page and resource links work;
 - the partner slug is unique;
-- the copy contains no unsupported customer or loss claim;
-- the partner understands that subscriber emails are not shared;
+- all download and privacy links work;
+- the copy contains no unsupported customer, ROI, or prevented-loss claim;
+- subscriber emails are not shared;
 - the material says sandbox proof, not universal guarantee;
-- follow-up is capped and includes unsubscribe language.
+- educational follow-up is capped and includes a clear exit path.
 
 ## Reporting
 
@@ -190,8 +193,7 @@ Report aggregate metrics only:
 
 ```text
 unique partner visits
-opt-in count
-opt-in conversion
+opt-in requests
 self-test replies
 qualified workflow conversations
 requests for executable proof
@@ -212,8 +214,12 @@ one, or unknown economic effects after a timeout?
 
 I will provide the complete copy, proof card, public sandbox result, and a
 partner-attributed opt-in link. Your audience gets a useful self-test; people
-who want the material subscribe directly and can leave at any time.
+who want the material request it directly and can leave at any time.
 
 Would this be relevant enough for one educational mention or co-authored
 technical note?
 ```
+
+## Hosting note
+
+The Lovable URL above is the canonical live destination. A GitHub Pages mirror may be enabled later, but partner campaigns must not use the mirror until it has been verified publicly.
