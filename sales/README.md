@@ -7,7 +7,12 @@ This folder turns the verified-transition model into a small, evidence-first cus
 - [`ambiguous-payment-recovery-self-test.md`](ambiguous-payment-recovery-self-test.md) — the public seven-question diagnostic and evidence inventory.
 - [`jv-partner-kit.md`](jv-partner-kit.md) — partner selection, ready-to-publish copy, attribution links, consent boundary, referral economics, and reporting.
 - [`opt-in-welcome-sequence.md`](opt-in-welcome-sequence.md) — Day 0 delivery plus three educational follow-ups for explicit opt-ins.
+- [`manual-double-opt-in-operations.md`](manual-double-opt-in-operations.md) — the active Gmail + private-registry bridge: request intake, second confirmation, sequence cap, unsubscribe, deletion, and future-backend migration rules.
 - [`../site/`](../site/) — the deployable privacy-conscious opt-in page, resource page, downloads, provider-neutral form adapter, and GitHub Pages workflow.
+
+The canonical public destination is:
+
+- **https://ambiguous-payment-recovery-kit.lovable.app/**
 
 ## Prelaunch assets
 
@@ -26,7 +31,8 @@ This folder turns the verified-transition model into a small, evidence-first cus
 
 ```text
 one painful question or partner mention
-→ voluntary opt-in
+→ voluntary resource request
+→ second explicit confirmation
 → self-test + proof card
 → PLC 1: accepted is not settled
 → PLC 2: idempotency is not recovery
@@ -97,7 +103,10 @@ For each distribution partner, change only:
 - Missing or conflicting evidence is surfaced, not silently converted into success.
 - Prevented-loss and ROI numbers are never invented.
 - Partners do not transfer mailing lists; readers opt in directly.
+- A resource request is not a confirmed subscription.
 - Subscriber identities are not shared without explicit consent.
+- Day 0 may be followed by no more than three educational emails.
+- Any stop, unsubscribe, bounce, or deletion request suppresses future sending immediately.
 
 ## Public-repository boundary
 
