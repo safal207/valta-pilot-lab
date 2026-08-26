@@ -27,11 +27,12 @@ def evaluate_mcp_request(
     execution_observed: bool = False,
     ledger: ActionLedger | None = None,
 ) -> dict[str, str]:
-    """Adapt one MCP-shaped request to the deterministic core verifier.
+    """Adapt one MCP-shaped request to the deterministic policy evaluator.
 
-    Policy data is explicit in the prototype so a recorded tool call contains the
-    policy snapshot needed to reproduce its decision. Production code should
-    resolve an authenticated policy snapshot from durable Valta state instead.
+    Policy data is explicit so a recorded tool call contains the snapshot needed
+    to reproduce its decision. `ALLOW` is evaluation evidence only: this wrapper
+    does not reserve, dispatch, observe, or finalize the action. The durable
+    lifecycle lives in `action_lifecycle.py`.
     """
 
     active_ledger = ledger if ledger is not None else _server_ledger
@@ -73,8 +74,8 @@ def verify_action(
     """Evaluate a proposed financial action and return a reproducible verdict.
 
     `amount` and `max_amount` are decimal strings to avoid binary floating-point
-    ambiguity. This tool proves the policy decision only; downstream execution is
-    reported as unverified unless the caller explicitly supplies observed evidence.
+    ambiguity. The tool proves the policy decision only. An `ALLOW` response is
+    not a reservation, execution receipt, or final economic outcome.
     """
 
     return evaluate_mcp_request(
