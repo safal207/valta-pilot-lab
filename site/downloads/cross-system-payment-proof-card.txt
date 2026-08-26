@@ -1,0 +1,60 @@
+THE PROOF BREAKS BETWEEN SYSTEMS
+Cross-System Payment Recovery — Public Proof Card
+
+EXPENSIVE STATE
+Payment action:   authorized and dispatched
+Provider:         ACCEPTED or response lost
+External rail:    unknown or delayed
+Customer ledger:  unknown or unreconciled
+Automation:       requests retry
+
+API accepted
+!= recipient credited
+!= settlement final
+!= ledger reconciled
+!= safe to retry
+
+FOUR HONEST VERDICTS
+VERIFIED
+One matching external effect and linked ledger result are observed.
+Finalize; do not retry.
+
+SAFE_TO_RETRY
+An explicit pre-effect rejection and zero external effects are proven.
+A new attempt may be permitted under policy.
+
+UNVERIFIED
+The provider claims acceptance, but the expected external effect is absent.
+Do not claim success.
+
+RECONCILE_REQUIRED
+An effect may have occurred, or evidence domains disagree.
+Block blind retry until reconciliation.
+
+EXECUTABLE SANDBOX RESULT
+24 retry attempts
+1 durable reservation owner
+23 stale or duplicate attempts rejected
+1 external rail effect
+1 linked customer-ledger posting
+receipt verification: PASS
+
+WHY BOTH PROOFS MATTER
+Concurrency control proves which attempt owned dispatch.
+Independent observation proves what happened outside that boundary.
+
+REPRODUCE
+Repository:
+https://github.com/safal207/valta-pilot-lab
+
+From prototypes/verify_action:
+python cross_system_demo.py --scenario concurrent-retry --format text
+python cross_system_demo.py --scenario all --format json --include-receipt
+
+CLAIM BOUNDARY
+The public proof demonstrates a declared sandbox boundary:
+durable reservation + fencing enforcement + sandbox idempotency semantics
++ independent provider/rail/ledger observation + receipt integrity checks.
+
+It does not claim universal exactly-once execution, custody, production
+readiness, insurance, compliance certification, or unsupported financial savings.

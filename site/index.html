@@ -1,0 +1,216 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ambiguous Payment Recovery Self-Test</title>
+  <meta name="description" content="Can your payment workflow prove zero, one, or unknown economic effects after a timeout? Get the seven-question self-test, proof card, and machine-readable sandbox result.">
+  <meta name="theme-color" content="#07111f">
+  <meta property="og:title" content="Can your workflow prove what happened after a payment timeout?">
+  <meta property="og:description" content="Get the seven-question recovery self-test and cross-system payment proof.">
+  <meta property="og:type" content="website">
+  <link rel="stylesheet" href="assets/styles.css">
+  <script defer src="config.js"></script>
+  <script defer src="assets/app.js"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html" aria-label="Verified Transition Lab home">
+        <span class="brand-mark" aria-hidden="true">VT</span>
+        <span>Verified Transition Lab</span>
+      </a>
+      <a class="header-link" href="#get-kit">Get the recovery kit</a>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="container hero-grid">
+        <div>
+          <span class="eyebrow">Cross-system payment recovery</span>
+          <h1>Can your workflow prove zero, one, or unknown effects after a timeout?</h1>
+          <p class="lead">
+            Get the seven-question recovery self-test, a one-page provider → rail → ledger proof card,
+            and a machine-readable sandbox result.
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="#get-kit">Get the free kit</a>
+            <a class="button secondary" href="#proof">See the proof boundary</a>
+          </div>
+          <div class="trust-line" aria-label="Trust boundaries">
+            <span>Independent QA</span>
+            <span>No custody</span>
+            <span>No production credentials</span>
+            <span>Explicit non-claims</span>
+          </div>
+        </div>
+
+        <aside class="signal-card" aria-label="Ambiguous payment state">
+          <pre><span class="accepted">Provider</span>         ACCEPTED
+External rail     <span class="unknown">?</span>
+Customer ledger   <span class="unknown">?</span>
+Retry requested   YES
+
+Safe answer:
+<span class="unknown">RECONCILE_REQUIRED</span></pre>
+          <p class="signal-caption">
+            Provider acceptance can be real and still be insufficient evidence for settlement or safe retry.
+          </p>
+        </aside>
+      </div>
+    </section>
+
+    <section id="proof">
+      <div class="container">
+        <span class="pill">Executable sandbox result</span>
+        <h2>The concurrency control and the economic observation are different proofs.</h2>
+        <p class="section-intro">
+          One current generation owns dispatch. A separate observer checks what happened outside that control boundary.
+        </p>
+        <div class="proof-strip" role="list" aria-label="Headline proof metrics">
+          <div class="metric" role="listitem"><strong>24</strong><span>retry attempts</span></div>
+          <div class="metric" role="listitem"><strong>1</strong><span>reservation owner</span></div>
+          <div class="metric" role="listitem"><strong>23</strong><span>attempts rejected</span></div>
+          <div class="metric" role="listitem"><strong>1</strong><span>rail effect</span></div>
+          <div class="metric" role="listitem"><strong>PASS</strong><span>receipt integrity</span></div>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="verdict-heading">
+      <div class="container">
+        <h2 id="verdict-heading">Four honest recovery verdicts</h2>
+        <p class="section-intro">
+          The goal is not to manufacture certainty. It is to permit only the next action justified by available evidence.
+        </p>
+        <div class="grid-4">
+          <article class="panel verdict">
+            <h3>VERIFIED</h3>
+            <p>One matching external effect and linked ledger result are observed. Finalize; do not retry.</p>
+          </article>
+          <article class="panel verdict safe">
+            <h3>SAFE_TO_RETRY</h3>
+            <p>A pre-effect rejection and zero external effects are proven. A new attempt may be allowed under policy.</p>
+          </article>
+          <article class="panel verdict unverified">
+            <h3>UNVERIFIED</h3>
+            <p>The provider claims acceptance, but the expected effect is absent. Do not claim success.</p>
+          </article>
+          <article class="panel verdict reconcile">
+            <h3>RECONCILE_REQUIRED</h3>
+            <p>An effect may have occurred or evidence disagrees. Block blind retry until the state is reconciled.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section aria-labelledby="self-test-heading">
+      <div class="container">
+        <h2 id="self-test-heading">The seven-question self-test</h2>
+        <p class="section-intro">One “no,” “unknown,” or “we check it manually” identifies a transition worth pressure-testing.</p>
+        <ol class="self-test">
+          <li>Is authorization bound to the exact amount, recipient, target, and action?</li>
+          <li>Is one execution owner durably reserved before dispatch?</li>
+          <li>Can an old worker be fenced after a timeout or restart?</li>
+          <li>Is provider <code>accepted</code> kept separate from settlement finality?</li>
+          <li>Can the external economic effect be observed independently?</li>
+          <li>Does an unknown outcome block blind retry?</li>
+          <li>Can another process replay the evidence and reach the same verdict?</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="get-kit" aria-labelledby="kit-heading">
+      <div class="container optin-layout">
+        <div>
+          <span class="pill">Free diagnostic kit</span>
+          <h2 id="kit-heading">Find the transition your current controls cannot safely close.</h2>
+          <p class="section-intro">
+            The kit is designed for payment, payout, escrow, wallet, settlement, reliability, and agentic-commerce teams.
+          </p>
+          <ul class="kit-list">
+            <li>Seven-question ambiguous-payment recovery self-test</li>
+            <li>Cross-system provider → rail → ledger proof card</li>
+            <li>Machine-readable public sandbox result</li>
+            <li>Up to three educational follow-ups; no endless drip campaign</li>
+          </ul>
+          <p class="partner-note" data-partner-note hidden></p>
+        </div>
+
+        <form class="form-card" data-optin-form>
+          <div class="field">
+            <label for="email">Work email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required>
+          </div>
+          <div class="field">
+            <label for="company">Company <span class="muted">(optional)</span></label>
+            <input id="company" name="company" type="text" autocomplete="organization">
+          </div>
+          <div class="field">
+            <label for="transition">Which transition becomes unknown after a timeout?</label>
+            <textarea id="transition" name="transition" required placeholder="Example: payout dispatch → provider accepted → recipient credit unknown → retry requested"></textarea>
+          </div>
+
+          <input type="hidden" name="ref">
+          <input type="hidden" name="utm_source">
+          <input type="hidden" name="utm_medium">
+          <input type="hidden" name="utm_campaign">
+          <input type="hidden" name="utm_content">
+          <input type="hidden" name="utm_term">
+
+          <label class="checkbox">
+            <input name="consent" type="checkbox" value="yes" required>
+            <span>
+              Send me the requested kit and up to three educational emails about payment recovery.
+              I can unsubscribe at any time. See the <a href="privacy.html">privacy note</a>.
+            </span>
+          </label>
+
+          <div class="hero-actions">
+            <button class="button" type="submit">Send the recovery kit</button>
+          </div>
+          <p class="form-note">
+            No payment data, credentials, or production evidence should be submitted here.
+            No advertising trackers are enabled by default.
+          </p>
+          <p class="status" data-form-status hidden aria-live="polite"></p>
+          <a class="inline-link" data-fallback-link href="thanks.html" hidden>Open the resource page</a>
+        </form>
+      </div>
+    </section>
+
+    <section aria-labelledby="fit-heading">
+      <div class="container">
+        <h2 id="fit-heading">A strong fit is bounded, observable, and economically meaningful.</h2>
+        <div class="grid-2">
+          <article class="panel">
+            <h3>Good diagnostic fit</h3>
+            <p>
+              A workflow crosses provider, banking, card, blockchain, recipient, or accounting boundaries;
+              timeout or retry uncertainty exists; and a final state can be observed independently.
+            </p>
+          </article>
+          <article class="panel">
+            <h3>Not a fit</h3>
+            <p>
+              Requests for custody, production credentials, unlimited audits, universal exactly-once guarantees,
+              or claims that cannot be supported by accessible evidence.
+            </p>
+          </article>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="site-footer">
+    <div class="container footer-inner">
+      <span>Verified Transition Lab — evidence-first financial-state verification.</span>
+      <nav class="footer-links" aria-label="Footer">
+        <a href="privacy.html">Privacy</a>
+        <a href="https://github.com/safal207/valta-pilot-lab">GitHub proof</a>
+      </nav>
+    </div>
+  </footer>
+</body>
+</html>
