@@ -43,8 +43,35 @@ The form passes `ref` and standard UTM values to the configured endpoint. The st
 python scripts/validate_site.py
 ```
 
-## Deployment
+## CI package
 
-`.github/workflows/optin-site.yml` validates pull requests and deploys the `site/` directory to GitHub Pages after a merge to `main`.
+Every successful validation run uploads a 30-day workflow artifact named:
 
-The repository may still require GitHub Pages to be configured with **Source: GitHub Actions** in repository settings. If the deployment job reports that Pages is not enabled, enable that setting and rerun the workflow.
+```text
+ambiguous-payment-recovery-site
+```
+
+This provides a reviewable static bundle even before GitHub Pages is enabled.
+
+## One-time GitHub Pages bootstrap
+
+GitHub's standard `GITHUB_TOKEN` can deploy an existing Pages site but cannot create the Pages site for a repository that has never enabled it.
+
+Complete the one-time repository setup:
+
+1. Open **Settings → Pages**.
+2. Under **Build and deployment**, choose **Source: GitHub Actions**.
+3. Open **Settings → Secrets and variables → Actions → Variables**.
+4. Create repository variable:
+
+```text
+PAGES_ENABLED=true
+```
+
+5. Run the **Opt-in site** workflow manually with `deploy=true`, or merge any later site change to `main`.
+
+Until `PAGES_ENABLED=true`, CI remains green, packages the site as an artifact, and emits a notice instead of failing deployment.
+
+## Automated deployment
+
+After the bootstrap, `.github/workflows/optin-site.yml` validates and packages every relevant change and deploys `site/` to GitHub Pages from `main`.
