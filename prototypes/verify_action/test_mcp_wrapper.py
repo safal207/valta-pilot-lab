@@ -30,6 +30,7 @@ class MCPWrapperTests(unittest.TestCase):
         self.assertEqual(decision["verdict"], "ALLOW")
         self.assertEqual(decision["reason_code"], "POLICY_SATISFIED")
         self.assertEqual(decision["execution_boundary"], "EXTERNAL_UNVERIFIED")
+        self.assertTrue(decision["action_digest"].startswith("sha256:"))
         self.assertTrue(decision["evidence_ref"].startswith("sha256:"))
 
     def test_direct_wrapper_preserves_policy_block(self):
@@ -48,6 +49,15 @@ class MCPWrapperTests(unittest.TestCase):
         self.assertEqual(decision["verdict"], "BLOCK")
         self.assertEqual(decision["reason_code"], "STALE_AUTHORIZATION")
 
+    def test_explicitly_consumed_identity_is_still_blocked(self):
+        args = {**BASE_ARGS, "action_id": "mcp-act-consumed"}
+        decision = evaluate_mcp_request(
+            **args,
+            ledger=ActionLedger({"mcp-act-consumed"}),
+        )
+        self.assertEqual(decision["verdict"], "BLOCK")
+        self.assertEqual(decision["reason_code"], "DUPLICATE_ACTION_ID")
+
 
 class MCPRoundTripTests(unittest.IsolatedAsyncioTestCase):
     async def test_in_memory_mcp_round_trip_returns_structured_verdict(self):
@@ -64,17 +74,21 @@ class MCPRoundTripTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             result.structured_content["execution_boundary"], "EXTERNAL_UNVERIFIED"
         )
+        self.assertTrue(result.structured_content["action_digest"].startswith("sha256:"))
         self.assertTrue(result.structured_content["evidence_ref"].startswith("sha256:"))
 
-    async def test_in_memory_mcp_round_trip_detects_duplicate(self):
-        args = {**BASE_ARGS, "action_id": "mcp-roundtrip-duplicate"}
+    async def test_repeated_mcp_evaluation_does_not_consume_action_identity(self):
+        args = {**BASE_ARGS, "action_id": "mcp-roundtrip-repeat"}
         async with Client(mcp, raise_exceptions=True) as client:
             first = await client.call_tool("verify_action", args)
             second = await client.call_tool("verify_action", args)
 
         self.assertEqual(first.structured_content["verdict"], "ALLOW")
-        self.assertEqual(second.structured_content["verdict"], "BLOCK")
-        self.assertEqual(second.structured_content["reason_code"], "DUPLICATE_ACTION_ID")
+        self.assertEqual(second.structured_content["verdict"], "ALLOW")
+        self.assertEqual(
+            first.structured_content["action_digest"],
+            second.structured_content["action_digest"],
+        )
 
 
 if __name__ == "__main__":
