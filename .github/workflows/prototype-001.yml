@@ -18,9 +18,11 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run Prototype 001 tests
+      - name: Run Prototype 001 core tests
         working-directory: prototypes/verify_action
-        run: python -m unittest -v test_valta_verify.py
-      - name: Run machine-readable demo
+        run: python -m unittest -v test_valta_verify.py test_action_lifecycle.py
+      - name: Run machine-readable lifecycle demo
         working-directory: prototypes/verify_action
         run: python demo.py
+      - name: Compile prototype
+        run: python -m compileall prototypes/verify_action
