@@ -20,7 +20,7 @@ EVALUATE
 
 ## Durable store
 
-`ActionLedger` is now a compatibility name for `SQLiteActionStore`; it is no longer an in-memory seen-ID set.
+`ActionLedger` is a compatibility name for `SQLiteActionStore`; it is not a boolean seen-ID set.
 
 ```python
 store = ActionLedger(db_path="./data/actions.sqlite3")
@@ -39,6 +39,27 @@ The SQLite adapter provides:
 
 The MCP wrapper remains evaluation-only. Set `VALTA_ACTION_DB` when embedding the store in a long-running service; an unset value may use an in-memory prototype store.
 
+## Cross-system proof demo
+
+`cross_system_proof.py` adds three deliberately separate evidence domains:
+
+```text
+payment provider state
+external recipient rail
+customer accounting ledger
+```
+
+The independent observer never treats provider acceptance as final settlement. It returns:
+
+```text
+VERIFIED             one matching rail effect and linked ledger posting
+SAFE_TO_RETRY         explicit pre-effect rejection and zero external effects
+UNVERIFIED            provider accepted, but the expected effect is absent
+RECONCILE_REQUIRED    evidence is unknown, conflicting, or split across systems
+```
+
+The default concurrency scenario sends 24 reservation attempts against one action. One generation owns dispatch; 23 stale attempts are rejected; the sandbox rail records one economic effect; and the exported receipt verifies independently.
+
 ## Determinism rule
 
 No policy or lifecycle transition reads the wall clock. Freshness, reservation expiry, dispatch time, observation time, and recovery time are supplied as explicit evidence. Replaying the same evidence yields the same decision and receipt.
@@ -53,14 +74,23 @@ No policy or lifecycle transition reads the wall clock. Freshness, reservation e
 6. Timeout is not proof of no effect and never enables blind retry.
 7. Restart during an uncertain dispatch enters `RECONCILE_REQUIRED`.
 8. Recovery appends evidence; it never rewrites prior history.
+9. Cross-system finality requires agreement between the declared observer domains.
+10. A receipt that is changed after export must fail independent verification.
 
 ## Run
 
 From this directory:
 
 ```bash
-python -m unittest -v test_valta_verify.py test_action_lifecycle.py
+python -m unittest -v \
+  test_valta_verify.py \
+  test_action_lifecycle.py \
+  test_cross_system_proof.py
+
 python demo.py
+python cross_system_demo.py --scenario concurrent-retry --format text
+python cross_system_demo.py --scenario all --format json
+python cross_system_demo.py --scenario all --format json --include-receipt
 ```
 
 With MCP dependencies installed:
@@ -84,7 +114,10 @@ python -m unittest discover -p "test_*.py" -v
 - stale writer rejection;
 - restart reconstruction;
 - deterministic receipt replay and tamper detection;
-- no second finalized effect inside the declared store/adapter boundary.
+- provider, external rail, and accounting ledger agreement;
+- explicit `SAFE_TO_RETRY` only after known no-effect evidence;
+- timeout after rail credit but before ledger reconciliation;
+- 24 concurrent attempts with one owner and one economic effect.
 
 ## Claim boundary
 
@@ -93,6 +126,7 @@ This prototype does **not** claim universal exactly-once execution. Its guarante
 - the durable reservation store;
 - the fencing token being enforced at the dispatch boundary;
 - downstream idempotency support, when available;
-- the completeness and independence of effect observation.
+- the completeness and independence of effect observation;
+- the declared provider, rail, and ledger adapters used by the demo.
 
 It is not a wallet, payment rail, custodian, formal-verification certificate, or production distributed consensus system.

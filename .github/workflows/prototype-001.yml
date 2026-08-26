@@ -18,11 +18,27 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - name: Run Prototype 001 core tests
+      - name: Run Prototype 001 core and cross-system tests
         working-directory: prototypes/verify_action
-        run: python -m unittest -v test_valta_verify.py test_action_lifecycle.py
+        run: >-
+          python -m unittest -v
+          test_valta_verify.py
+          test_action_lifecycle.py
+          test_cross_system_proof.py
       - name: Run machine-readable lifecycle demo
         working-directory: prototypes/verify_action
         run: python demo.py
+      - name: Generate cross-system proof artifact
+        working-directory: prototypes/verify_action
+        run: |
+          python cross_system_demo.py --scenario all --format json --include-receipt > cross-system-proof.json
+          python -m json.tool cross-system-proof.json > /dev/null
+          python cross_system_demo.py --scenario concurrent-retry --format text
+      - name: Upload cross-system proof artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cross-system-payment-proof
+          path: prototypes/verify_action/cross-system-proof.json
+          if-no-files-found: error
       - name: Compile prototype
         run: python -m compileall prototypes/verify_action
