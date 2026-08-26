@@ -6,11 +6,30 @@ Valta Pilot Lab is a working repository for testing one core business hypothesis
 
 The goal is not to prove that the technology is interesting. The goal is to prove that a customer will pay for reduced financial loss, tighter authorization, safer retries, clearer reconciliation, and verifiable execution evidence.
 
+## Current product decision
+
+This repository is an **internal incubation and paid-pilot laboratory**. The public product name remains undecided pending naming and trademark review.
+
+The selected v1 direction is a verified-transition control and evidence layer:
+
+```text
+exact authorization
+  -> durable reservation
+  -> dispatch
+  -> observed economic effect
+  -> safe recovery / reconciliation
+  -> independently inspectable receipt
+```
+
+Read the product, technical, commercial, and 30-day execution decision:
+
+- [`docs/verified-transition-mvp-v1.md`](docs/verified-transition-mvp-v1.md)
+
 ## Current thesis
 
 A useful first customer is a team whose automated systems or AI agents can trigger money-moving or paid actions: paid APIs, wallets, payouts, escrow, settlement, or other financially meaningful operations.
 
-Valta should be evaluated against measurable outcomes:
+The pilot should be evaluated against measurable outcomes:
 
 - money under control;
 - prevented unauthorized, duplicate, or policy-violating actions;
@@ -32,6 +51,7 @@ one workflow
 
 ## Repository map
 
+- `docs/verified-transition-mvp-v1.md` — selected product, architecture, business model, and execution plan.
 - `docs/economic-model-v0.1.md` — first economic hypothesis.
 - `docs/pilot-offer.md` — fixed-scope pilot offer.
 - `docs/success-metrics.md` — evidence and ROI measurement.
