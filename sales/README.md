@@ -2,6 +2,13 @@
 
 This folder turns the verified-transition model into a small, evidence-first customer package.
 
+## Acquisition and partner assets
+
+- [`ambiguous-payment-recovery-self-test.md`](ambiguous-payment-recovery-self-test.md) — the public seven-question diagnostic and evidence inventory.
+- [`jv-partner-kit.md`](jv-partner-kit.md) — partner selection, ready-to-publish copy, attribution links, consent boundary, referral economics, and reporting.
+- [`opt-in-welcome-sequence.md`](opt-in-welcome-sequence.md) — Day 0 delivery plus three educational follow-ups for explicit opt-ins.
+- [`../site/`](../site/) — the deployable privacy-conscious opt-in page, resource page, downloads, provider-neutral form adapter, and GitHub Pages workflow.
+
 ## Prelaunch assets
 
 - [`plf-launch-v1.md`](plf-launch-v1.md) — the canonical Pre-Prelaunch → Prelaunch Content → paid-launch operating plan.
@@ -18,10 +25,10 @@ This folder turns the verified-transition model into a small, evidence-first cus
 ## Recommended sequence
 
 ```text
-one painful question
-→ relevant human reply or explicit opt-in
+one painful question or partner mention
+→ voluntary opt-in
+→ self-test + proof card
 → PLC 1: accepted is not settled
-→ proof card + 90-second executable demo
 → PLC 2: idempotency is not recovery
 → PLC 3: five-scenario ownership experience
 → exact workflow and test-surface qualification
@@ -71,6 +78,13 @@ For each prospect, change only:
 5. the price and delivery window after qualification;
 6. the ROI metric supported by the customer’s own data.
 
+For each distribution partner, change only:
+
+1. the audience-specific opening;
+2. the partner slug and UTM source;
+3. the channel format;
+4. the co-authored example, when applicable.
+
 ## Invariants that must not be weakened
 
 - A decision for action A cannot authorize action B.
@@ -82,9 +96,11 @@ For each prospect, change only:
 - Unknown post-dispatch outcome blocks blind retry.
 - Missing or conflicting evidence is surfaced, not silently converted into success.
 - Prevented-loss and ROI numbers are never invented.
+- Partners do not transfer mailing lists; readers opt in directly.
+- Subscriber identities are not shared without explicit consent.
 
 ## Public-repository boundary
 
-Keep customer names, credentials, non-public architecture, transaction data, private correspondence, and production evidence out of this repository.
+Keep customer names, credentials, non-public architecture, transaction data, private correspondence, subscriber data, and production evidence out of this repository.
 
 Public samples and proof bundles are illustrative sandbox evidence. They are not production signatures, attestations, insurance promises, compliance certificates, or guarantees of absolute safety.
