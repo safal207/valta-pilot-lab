@@ -1,4 +1,3 @@
- M Cargo.lock
  M contracts/stellarkraal/src/lib.rs
  M contracts/stellarkraal/test_snapshots/scenario_forced_liquidation_after_interest_accrual.1.json
  M contracts/stellarkraal/test_snapshots/scenario_happy_path_full_lifecycle.1.json

@@ -9,5 +9,6 @@ Validated in GitHub Actions:
 - `cargo clippy -p stellarkraal --all-targets -- -D warnings` — PASS
 - release WASM build — PASS
 
-The patch adds a checked monotonic instance nonce to `open_loan`, a
-same-ledger close/reopen regression, and generated snapshot updates.
+The clean patch changes only the `stellarkraal` contract, lifecycle
+regression, and Soroban snapshots. Temporary workspace and lockfile
+changes used to validate the upstream checkout are excluded.
