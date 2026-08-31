@@ -1,0 +1,14 @@
+ M Cargo.lock
+ M contracts/stellarkraal/src/lib.rs
+ M contracts/stellarkraal/test_snapshots/scenario_forced_liquidation_after_interest_accrual.1.json
+ M contracts/stellarkraal/test_snapshots/scenario_happy_path_full_lifecycle.1.json
+ M contracts/stellarkraal/test_snapshots/scenario_partial_repayment_then_full.1.json
+ M contracts/stellarkraal/test_snapshots/scenario_rejected_requests_leave_state_untouched.1.json
+ A contracts/stellarkraal/test_snapshots/scenario_same_ledger_reopen_preserves_closed_loan.1.json
+ M contracts/stellarkraal/test_snapshots/tests/test_full_repayment_frees_asset.1.json
+ M contracts/stellarkraal/test_snapshots/tests/test_health_factor_safe.1.json
+ M contracts/stellarkraal/test_snapshots/tests/test_interest_accrual.1.json
+ M contracts/stellarkraal/test_snapshots/tests/test_liquidation_boundary.1.json
+ M contracts/stellarkraal/test_snapshots/tests/test_liquidation_safe_loan_fails.1.json
+ M contracts/stellarkraal/test_snapshots/tests/test_ltv_boundary_exact_allowed.1.json
+ M contracts/stellarkraal/tests/lifecycle_simulation.rs

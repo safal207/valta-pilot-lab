@@ -1,0 +1,1504 @@
+diff --git a/Cargo.lock b/Cargo.lock
+index 852d078..85ca157 100644
+--- a/Cargo.lock
++++ b/Cargo.lock
+@@ -223,17 +223,6 @@ dependencies = [
+  "syn 2.0.118",
+ ]
+ 
+-[[package]]
+-name = "carbon-credit-fuzz"
+-version = "0.0.0"
+-dependencies = [
+- "arbitrary",
+- "carbon_credit",
+- "carbon_registry",
+- "libfuzzer-sys",
+- "soroban-sdk",
+-]
+-
+ [[package]]
+ name = "carbon-oracle"
+ version = "0.1.0"
+@@ -285,8 +274,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "e228eec9be7c17ccb640b59b36a5cd805ea2a564a4c5e162c2f659fea30d3b96"
+ dependencies = [
+  "find-msvc-tools",
+- "jobserver",
+- "libc",
+  "shlex",
+ ]
+ 
+@@ -695,17 +682,6 @@ dependencies = [
+  "wasm-bindgen",
+ ]
+ 
+-[[package]]
+-name = "getrandom"
+-version = "0.4.3"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "300e883d756b2e4ec94e02791f39b04b522276138852cfc41d9fb7e904106099"
+-dependencies = [
+- "cfg-if",
+- "libc",
+- "r-efi",
+-]
+-
+ [[package]]
+ name = "group"
+ version = "0.13.0"
+@@ -836,16 +812,6 @@ version = "1.0.18"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "8f42a60cbdf9a97f5d2305f08a87dc4e09308d1276d28c869c684d7777685682"
+ 
+-[[package]]
+-name = "jobserver"
+-version = "0.1.35"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "1c00acbd29eabad4a2392fa0e921c874934dbbf4194312ad20f04a0ed67a3cb3"
+-dependencies = [
+- "getrandom 0.4.3",
+- "libc",
+-]
+-
+ [[package]]
+ name = "js-sys"
+ version = "0.3.103"
+@@ -884,16 +850,6 @@ version = "0.2.186"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "68ab91017fe16c622486840e4c83c9a37afeff978bd239b5293d61ece587de66"
+ 
+-[[package]]
+-name = "libfuzzer-sys"
+-version = "0.4.13"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "a9fd2f41a1cba099f79a0b6b6c35656cf7c03351a7bae8ff0f28f25270f929d2"
+-dependencies = [
+- "arbitrary",
+- "cc",
+-]
+-
+ [[package]]
+ name = "libm"
+ version = "0.2.16"
+@@ -1049,12 +1005,6 @@ dependencies = [
+  "proc-macro2",
+ ]
+ 
+-[[package]]
+-name = "r-efi"
+-version = "6.0.0"
+-source = "registry+https://github.com/rust-lang/crates.io-index"
+-checksum = "f8dcc9c7d52a811697d2151c701e0d08956f92b0e24136cf4cf27b57a6a0d9bf"
+-
+ [[package]]
+ name = "rand"
+ version = "0.8.6"
+@@ -1082,7 +1032,7 @@ version = "0.6.4"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "ec0be4795e2f6a28069bec0b5ff3e2ac9bafc99e6a9a7dc3547996c5c816922c"
+ dependencies = [
+- "getrandom 0.2.17",
++ "getrandom",
+ ]
+ 
+ [[package]]
+@@ -1353,7 +1303,7 @@ dependencies = [
+  "ed25519-dalek",
+  "elliptic-curve",
+  "generic-array",
+- "getrandom 0.2.17",
++ "getrandom",
+  "hex-literal",
+  "hmac",
+  "k256",
+diff --git a/contracts/stellarkraal/src/lib.rs b/contracts/stellarkraal/src/lib.rs
+index e9a71de..9d43684 100644
+--- a/contracts/stellarkraal/src/lib.rs
++++ b/contracts/stellarkraal/src/lib.rs
+@@ -11,6 +11,7 @@ use soroban_sdk::{
+ // ── Storage keys ─────────────────────────────────────────────────────────────
+ 
+ const CONFIG: Symbol = symbol_short!("CONFIG");
++const LOAN_NONCE: Symbol = symbol_short!("LNONCE");
+ 
+ fn asset_key(e: &Env, id: &BytesN<32>) -> Val {
+     (symbol_short!("ASSET"), id.clone()).into_val(e)
+@@ -283,14 +284,20 @@ impl StellarKraal {
+             .checked_add(cfg.creation_fee_stroops)
+             .ok_or(Error::ArithmeticError)?;
+ 
++        let loan_nonce: u64 = e.storage().instance().get(&LOAN_NONCE).unwrap_or(0);
++        let next_loan_nonce = loan_nonce.checked_add(1).ok_or(Error::ArithmeticError)?;
++        e.storage().instance().set(&LOAN_NONCE, &next_loan_nonce);
++
+         let mut seed = soroban_sdk::Bytes::new(&e);
+         for b in now.to_be_bytes() {
+             seed.push_back(b);
+         }
+-        // mix in asset_id bytes for uniqueness
+         for b in asset_id.to_array() {
+             seed.push_back(b);
+         }
++        for b in next_loan_nonce.to_be_bytes() {
++            seed.push_back(b);
++        }
+         let loan_id: BytesN<32> = e.crypto().sha256(&seed).into();
+ 
+         e.storage().persistent().set(
+diff --git a/contracts/stellarkraal/test_snapshots/scenario_forced_liquidation_after_interest_accrual.1.json b/contracts/stellarkraal/test_snapshots/scenario_forced_liquidation_after_interest_accrual.1.json
+index b85075c..95e7622 100644
+--- a/contracts/stellarkraal/test_snapshots/scenario_forced_liquidation_after_interest_accrual.1.json
++++ b/contracts/stellarkraal/test_snapshots/scenario_forced_liquidation_after_interest_accrual.1.json
+@@ -215,7 +215,7 @@
+                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAARQG5"
+                 },
+                 {
+-                  "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                 }
+               ]
+             }
+@@ -337,7 +337,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                 }
+               ]
+             },
+@@ -357,7 +357,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                      "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                     }
+                   ]
+                 },
+@@ -562,6 +562,14 @@
+                           ]
+                         }
+                       },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
++                      },
+                       {
+                         "key": {
+                           "vec": [
+diff --git a/contracts/stellarkraal/test_snapshots/scenario_happy_path_full_lifecycle.1.json b/contracts/stellarkraal/test_snapshots/scenario_happy_path_full_lifecycle.1.json
+index ab1241b..b4fa5dc 100644
+--- a/contracts/stellarkraal/test_snapshots/scenario_happy_path_full_lifecycle.1.json
++++ b/contracts/stellarkraal/test_snapshots/scenario_happy_path_full_lifecycle.1.json
+@@ -322,7 +322,7 @@
+                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
+                 },
+                 {
+-                  "bytes": "ab62c7044cffd7f7690a835f099a80774fa423741c7123180523cdb8d77b8a6d"
++                  "bytes": "0433aaaff189453eba4b5c245d945481632c43e24ef06451247f5f58376db2b4"
+                 },
+                 {
+                   "i128": {
+@@ -542,7 +542,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "ab62c7044cffd7f7690a835f099a80774fa423741c7123180523cdb8d77b8a6d"
++                  "bytes": "0433aaaff189453eba4b5c245d945481632c43e24ef06451247f5f58376db2b4"
+                 }
+               ]
+             },
+@@ -562,7 +562,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "ab62c7044cffd7f7690a835f099a80774fa423741c7123180523cdb8d77b8a6d"
++                      "bytes": "0433aaaff189453eba4b5c245d945481632c43e24ef06451247f5f58376db2b4"
+                     }
+                   ]
+                 },
+@@ -767,6 +767,14 @@
+                           ]
+                         }
+                       },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
++                      },
+                       {
+                         "key": {
+                           "vec": [
+diff --git a/contracts/stellarkraal/test_snapshots/scenario_partial_repayment_then_full.1.json b/contracts/stellarkraal/test_snapshots/scenario_partial_repayment_then_full.1.json
+index 8f2a71d..505e5a3 100644
+--- a/contracts/stellarkraal/test_snapshots/scenario_partial_repayment_then_full.1.json
++++ b/contracts/stellarkraal/test_snapshots/scenario_partial_repayment_then_full.1.json
+@@ -138,7 +138,7 @@
+                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
+                 },
+                 {
+-                  "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                 },
+                 {
+                   "i128": {
+@@ -168,7 +168,7 @@
+                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
+                 },
+                 {
+-                  "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                 },
+                 {
+                   "i128": {
+@@ -197,7 +197,7 @@
+                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
+                 },
+                 {
+-                  "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                 },
+                 {
+                   "i128": {
+@@ -325,7 +325,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                 }
+               ]
+             },
+@@ -345,7 +345,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                      "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                     }
+                   ]
+                 },
+@@ -549,6 +549,14 @@
+                             }
+                           ]
+                         }
++                      },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
+                       }
+                     ]
+                   }
+diff --git a/contracts/stellarkraal/test_snapshots/scenario_rejected_requests_leave_state_untouched.1.json b/contracts/stellarkraal/test_snapshots/scenario_rejected_requests_leave_state_untouched.1.json
+index b51b268..ea152e3 100644
+--- a/contracts/stellarkraal/test_snapshots/scenario_rejected_requests_leave_state_untouched.1.json
++++ b/contracts/stellarkraal/test_snapshots/scenario_rejected_requests_leave_state_untouched.1.json
+@@ -319,7 +319,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                 }
+               ]
+             },
+@@ -339,7 +339,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "385e05dfd842b5f3480d8e1a89c57b2b25e3c9d4cf5d1b6d62c44dfe7954dadd"
++                      "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
+                     }
+                   ]
+                 },
+@@ -544,6 +544,14 @@
+                           ]
+                         }
+                       },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
++                      },
+                       {
+                         "key": {
+                           "vec": [
+diff --git a/contracts/stellarkraal/test_snapshots/scenario_same_ledger_reopen_preserves_closed_loan.1.json b/contracts/stellarkraal/test_snapshots/scenario_same_ledger_reopen_preserves_closed_loan.1.json
+new file mode 100644
+index 0000000..7200b85
+--- /dev/null
++++ b/contracts/stellarkraal/test_snapshots/scenario_same_ledger_reopen_preserves_closed_loan.1.json
+@@ -0,0 +1,840 @@
++{
++  "generators": {
++    "address": 8,
++    "nonce": 0
++  },
++  "auth": [
++    [],
++    [
++      [
++        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
++        {
++          "function": {
++            "contract_fn": {
++              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++              "function_name": "initialize",
++              "args": [
++                {
++                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
++                },
++                {
++                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
++                },
++                {
++                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
++                },
++                {
++                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 7000
++                  }
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 8500
++                  }
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 500
++                  }
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 1000
++                  }
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 1000
++                  }
++                },
++                {
++                  "u32": 100
++                }
++              ]
++            }
++          },
++          "sub_invocations": []
++        }
++      ]
++    ],
++    [
++      [
++        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++        {
++          "function": {
++            "contract_fn": {
++              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++              "function_name": "register_asset",
++              "args": [
++                {
++                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
++                },
++                {
++                  "symbol": "CATTLE"
++                },
++                {
++                  "symbol": "KR006"
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 1000000
++                  }
++                }
++              ]
++            }
++          },
++          "sub_invocations": []
++        }
++      ]
++    ],
++    [
++      [
++        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++        {
++          "function": {
++            "contract_fn": {
++              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++              "function_name": "open_loan",
++              "args": [
++                {
++                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
++                },
++                {
++                  "bytes": "3655ca59b7d566ae06297c200f98d04da2e8e89812d627bc29297c25db60362d"
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 500000
++                  }
++                }
++              ]
++            }
++          },
++          "sub_invocations": []
++        }
++      ]
++    ],
++    [],
++    [
++      [
++        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++        {
++          "function": {
++            "contract_fn": {
++              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++              "function_name": "repay_loan",
++              "args": [
++                {
++                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
++                },
++                {
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 501000
++                  }
++                }
++              ]
++            }
++          },
++          "sub_invocations": []
++        }
++      ]
++    ],
++    [],
++    [],
++    [
++      [
++        "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++        {
++          "function": {
++            "contract_fn": {
++              "contract_address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++              "function_name": "open_loan",
++              "args": [
++                {
++                  "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
++                },
++                {
++                  "bytes": "3655ca59b7d566ae06297c200f98d04da2e8e89812d627bc29297c25db60362d"
++                },
++                {
++                  "i128": {
++                    "hi": 0,
++                    "lo": 500000
++                  }
++                }
++              ]
++            }
++          },
++          "sub_invocations": []
++        }
++      ]
++    ],
++    [],
++    [],
++    []
++  ],
++  "ledger": {
++    "protocol_version": 22,
++    "sequence_number": 100,
++    "timestamp": 1700000000,
++    "network_id": "0000000000000000000000000000000000000000000000000000000000000000",
++    "base_reserve": 0,
++    "min_persistent_entry_ttl": 25228800,
++    "min_temp_entry_ttl": 16,
++    "max_entry_ttl": 25228801,
++    "ledger_entries": [
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++            "key": {
++              "vec": [
++                {
++                  "symbol": "ASSET"
++                },
++                {
++                  "bytes": "3655ca59b7d566ae06297c200f98d04da2e8e89812d627bc29297c25db60362d"
++                }
++              ]
++            },
++            "durability": "persistent"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++                "key": {
++                  "vec": [
++                    {
++                      "symbol": "ASSET"
++                    },
++                    {
++                      "bytes": "3655ca59b7d566ae06297c200f98d04da2e8e89812d627bc29297c25db60362d"
++                    }
++                  ]
++                },
++                "durability": "persistent",
++                "val": {
++                  "map": [
++                    {
++                      "key": {
++                        "symbol": "animal_type"
++                      },
++                      "val": {
++                        "symbol": "CATTLE"
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "appraised_value_xlm"
++                      },
++                      "val": {
++                        "i128": {
++                          "hi": 0,
++                          "lo": 1000000
++                        }
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "on_loan"
++                      },
++                      "val": {
++                        "bool": true
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "owner"
++                      },
++                      "val": {
++                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "tag_id"
++                      },
++                      "val": {
++                        "symbol": "KR006"
++                      }
++                    }
++                  ]
++                }
++              }
++            },
++            "ext": "v0"
++          },
++          25228899
++        ]
++      ],
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++            "key": {
++              "vec": [
++                {
++                  "symbol": "LOAN"
++                },
++                {
++                  "bytes": "25b69434222784273cdabcc962e86aeb1dbb954a7f14599272d1f55a00bce751"
++                }
++              ]
++            },
++            "durability": "persistent"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++                "key": {
++                  "vec": [
++                    {
++                      "symbol": "LOAN"
++                    },
++                    {
++                      "bytes": "25b69434222784273cdabcc962e86aeb1dbb954a7f14599272d1f55a00bce751"
++                    }
++                  ]
++                },
++                "durability": "persistent",
++                "val": {
++                  "map": [
++                    {
++                      "key": {
++                        "symbol": "active"
++                      },
++                      "val": {
++                        "bool": true
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "asset_id"
++                      },
++                      "val": {
++                        "bytes": "3655ca59b7d566ae06297c200f98d04da2e8e89812d627bc29297c25db60362d"
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "balance"
++                      },
++                      "val": {
++                        "i128": {
++                          "hi": 0,
++                          "lo": 501000
++                        }
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "borrower"
++                      },
++                      "val": {
++                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "opened_at"
++                      },
++                      "val": {
++                        "u32": 100
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "principal"
++                      },
++                      "val": {
++                        "i128": {
++                          "hi": 0,
++                          "lo": 500000
++                        }
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "updated_at"
++                      },
++                      "val": {
++                        "u32": 100
++                      }
++                    }
++                  ]
++                }
++              }
++            },
++            "ext": "v0"
++          },
++          25228899
++        ]
++      ],
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++            "key": {
++              "vec": [
++                {
++                  "symbol": "LOAN"
++                },
++                {
++                  "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
++                }
++              ]
++            },
++            "durability": "persistent"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++                "key": {
++                  "vec": [
++                    {
++                      "symbol": "LOAN"
++                    },
++                    {
++                      "bytes": "fa0fa81cf6b5101030782b1fe117ef97421dea7fcc7fdfda5b287bb95f4c51db"
++                    }
++                  ]
++                },
++                "durability": "persistent",
++                "val": {
++                  "map": [
++                    {
++                      "key": {
++                        "symbol": "active"
++                      },
++                      "val": {
++                        "bool": false
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "asset_id"
++                      },
++                      "val": {
++                        "bytes": "3655ca59b7d566ae06297c200f98d04da2e8e89812d627bc29297c25db60362d"
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "balance"
++                      },
++                      "val": {
++                        "i128": {
++                          "hi": 0,
++                          "lo": 0
++                        }
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "borrower"
++                      },
++                      "val": {
++                        "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "opened_at"
++                      },
++                      "val": {
++                        "u32": 100
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "principal"
++                      },
++                      "val": {
++                        "i128": {
++                          "hi": 0,
++                          "lo": 500000
++                        }
++                      }
++                    },
++                    {
++                      "key": {
++                        "symbol": "updated_at"
++                      },
++                      "val": {
++                        "u32": 100
++                      }
++                    }
++                  ]
++                }
++              }
++            },
++            "ext": "v0"
++          },
++          25228899
++        ]
++      ],
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++            "key": "ledger_key_contract_instance",
++            "durability": "persistent"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAD2KM",
++                "key": "ledger_key_contract_instance",
++                "durability": "persistent",
++                "val": {
++                  "contract_instance": {
++                    "executable": {
++                      "wasm": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
++                    },
++                    "storage": [
++                      {
++                        "key": {
++                          "symbol": "CONFIG"
++                        },
++                        "val": {
++                          "map": [
++                            {
++                              "key": {
++                                "symbol": "admin"
++                              },
++                              "val": {
++                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4"
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "collateral_ratio_bps"
++                              },
++                              "val": {
++                                "i128": {
++                                  "hi": 0,
++                                  "lo": 7000
++                                }
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "creation_fee_stroops"
++                              },
++                              "val": {
++                                "i128": {
++                                  "hi": 0,
++                                  "lo": 1000
++                                }
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "interest_rate_bps"
++                              },
++                              "val": {
++                                "i128": {
++                                  "hi": 0,
++                                  "lo": 1000
++                                }
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "liquidation_bonus_bps"
++                              },
++                              "val": {
++                                "i128": {
++                                  "hi": 0,
++                                  "lo": 500
++                                }
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "liquidation_threshold_bps"
++                              },
++                              "val": {
++                                "i128": {
++                                  "hi": 0,
++                                  "lo": 8500
++                                }
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "max_price_age_ledgers"
++                              },
++                              "val": {
++                                "u32": 100
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "oracle_1"
++                              },
++                              "val": {
++                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHK3M"
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "oracle_2"
++                              },
++                              "val": {
++                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAITA4"
++                              }
++                            },
++                            {
++                              "key": {
++                                "symbol": "oracle_3"
++                              },
++                              "val": {
++                                "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAK3IM"
++                              }
++                            }
++                          ]
++                        }
++                      },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 2
++                        }
++                      }
++                    ]
++                  }
++                }
++              }
++            },
++            "ext": "v0"
++          },
++          25228899
++        ]
++      ],
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
++            "key": {
++              "ledger_key_nonce": {
++                "nonce": 801925984706572462
++              }
++            },
++            "durability": "temporary"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAFCT4",
++                "key": {
++                  "ledger_key_nonce": {
++                    "nonce": 801925984706572462
++                  }
++                },
++                "durability": "temporary",
++                "val": "void"
++              }
++            },
++            "ext": "v0"
++          },
++          25228900
++        ]
++      ],
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++            "key": {
++              "ledger_key_nonce": {
++                "nonce": 1033654523790656264
++              }
++            },
++            "durability": "temporary"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++                "key": {
++                  "ledger_key_nonce": {
++                    "nonce": 1033654523790656264
++                  }
++                },
++                "durability": "temporary",
++                "val": "void"
++              }
++            },
++            "ext": "v0"
++          },
++          25228900
++        ]
++      ],
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++            "key": {
++              "ledger_key_nonce": {
++                "nonce": 2032731177588607455
++              }
++            },
++            "durability": "temporary"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++                "key": {
++                  "ledger_key_nonce": {
++                    "nonce": 2032731177588607455
++                  }
++                },
++                "durability": "temporary",
++                "val": "void"
++              }
++            },
++            "ext": "v0"
++          },
++          25228900
++        ]
++      ],
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++            "key": {
++              "ledger_key_nonce": {
++                "nonce": 4837995959683129791
++              }
++            },
++            "durability": "temporary"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++                "key": {
++                  "ledger_key_nonce": {
++                    "nonce": 4837995959683129791
++                  }
++                },
++                "durability": "temporary",
++                "val": "void"
++              }
++            },
++            "ext": "v0"
++          },
++          25228900
++        ]
++      ],
++      [
++        {
++          "contract_data": {
++            "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++            "key": {
++              "ledger_key_nonce": {
++                "nonce": 5541220902715666415
++              }
++            },
++            "durability": "temporary"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_data": {
++                "ext": "v0",
++                "contract": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4",
++                "key": {
++                  "ledger_key_nonce": {
++                    "nonce": 5541220902715666415
++                  }
++                },
++                "durability": "temporary",
++                "val": "void"
++              }
++            },
++            "ext": "v0"
++          },
++          25228900
++        ]
++      ],
++      [
++        {
++          "contract_code": {
++            "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
++          }
++        },
++        [
++          {
++            "last_modified_ledger_seq": 0,
++            "data": {
++              "contract_code": {
++                "ext": "v0",
++                "hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
++                "code": ""
++              }
++            },
++            "ext": "v0"
++          },
++          25228899
++        ]
++      ]
++    ]
++  },
++  "events": []
++}
+\ No newline at end of file
+diff --git a/contracts/stellarkraal/test_snapshots/tests/test_full_repayment_frees_asset.1.json b/contracts/stellarkraal/test_snapshots/tests/test_full_repayment_frees_asset.1.json
+index 04332c0..d3b894f 100644
+--- a/contracts/stellarkraal/test_snapshots/tests/test_full_repayment_frees_asset.1.json
++++ b/contracts/stellarkraal/test_snapshots/tests/test_full_repayment_frees_asset.1.json
+@@ -138,7 +138,7 @@
+                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 },
+                 {
+                   "i128": {
+@@ -264,7 +264,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 }
+               ]
+             },
+@@ -284,7 +284,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                      "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                     }
+                   ]
+                 },
+@@ -488,6 +488,14 @@
+                             }
+                           ]
+                         }
++                      },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
+                       }
+                     ]
+                   }
+diff --git a/contracts/stellarkraal/test_snapshots/tests/test_health_factor_safe.1.json b/contracts/stellarkraal/test_snapshots/tests/test_health_factor_safe.1.json
+index 54b9b00..f08883a 100644
+--- a/contracts/stellarkraal/test_snapshots/tests/test_health_factor_safe.1.json
++++ b/contracts/stellarkraal/test_snapshots/tests/test_health_factor_safe.1.json
+@@ -236,7 +236,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 }
+               ]
+             },
+@@ -256,7 +256,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                      "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                     }
+                   ]
+                 },
+@@ -460,6 +460,14 @@
+                             }
+                           ]
+                         }
++                      },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
+                       }
+                     ]
+                   }
+diff --git a/contracts/stellarkraal/test_snapshots/tests/test_interest_accrual.1.json b/contracts/stellarkraal/test_snapshots/tests/test_interest_accrual.1.json
+index 6c07463..bd7c5a7 100644
+--- a/contracts/stellarkraal/test_snapshots/tests/test_interest_accrual.1.json
++++ b/contracts/stellarkraal/test_snapshots/tests/test_interest_accrual.1.json
+@@ -138,7 +138,7 @@
+                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAMDR4"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 },
+                 {
+                   "i128": {
+@@ -263,7 +263,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 }
+               ]
+             },
+@@ -283,7 +283,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                      "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                     }
+                   ]
+                 },
+@@ -487,6 +487,14 @@
+                             }
+                           ]
+                         }
++                      },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
+                       }
+                     ]
+                   }
+diff --git a/contracts/stellarkraal/test_snapshots/tests/test_liquidation_boundary.1.json b/contracts/stellarkraal/test_snapshots/tests/test_liquidation_boundary.1.json
+index 3b46a76..612a391 100644
+--- a/contracts/stellarkraal/test_snapshots/tests/test_liquidation_boundary.1.json
++++ b/contracts/stellarkraal/test_snapshots/tests/test_liquidation_boundary.1.json
+@@ -139,7 +139,7 @@
+                   "address": "CAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAOLZM"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 }
+               ]
+             }
+@@ -258,7 +258,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 }
+               ]
+             },
+@@ -278,7 +278,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                      "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                     }
+                   ]
+                 },
+@@ -482,6 +482,14 @@
+                             }
+                           ]
+                         }
++                      },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
+                       }
+                     ]
+                   }
+diff --git a/contracts/stellarkraal/test_snapshots/tests/test_liquidation_safe_loan_fails.1.json b/contracts/stellarkraal/test_snapshots/tests/test_liquidation_safe_loan_fails.1.json
+index 40f9f57..f5aeb2e 100644
+--- a/contracts/stellarkraal/test_snapshots/tests/test_liquidation_safe_loan_fails.1.json
++++ b/contracts/stellarkraal/test_snapshots/tests/test_liquidation_safe_loan_fails.1.json
+@@ -236,7 +236,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 }
+               ]
+             },
+@@ -256,7 +256,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                      "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                     }
+                   ]
+                 },
+@@ -460,6 +460,14 @@
+                             }
+                           ]
+                         }
++                      },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
+                       }
+                     ]
+                   }
+diff --git a/contracts/stellarkraal/test_snapshots/tests/test_ltv_boundary_exact_allowed.1.json b/contracts/stellarkraal/test_snapshots/tests/test_ltv_boundary_exact_allowed.1.json
+index 7d9c79f..140a552 100644
+--- a/contracts/stellarkraal/test_snapshots/tests/test_ltv_boundary_exact_allowed.1.json
++++ b/contracts/stellarkraal/test_snapshots/tests/test_ltv_boundary_exact_allowed.1.json
+@@ -236,7 +236,7 @@
+                   "symbol": "LOAN"
+                 },
+                 {
+-                  "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                  "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                 }
+               ]
+             },
+@@ -256,7 +256,7 @@
+                       "symbol": "LOAN"
+                     },
+                     {
+-                      "bytes": "183e3685794406772e06e088efceb884f8c4a88ea55d54d5fbb398d5429e7938"
++                      "bytes": "33904e5bf454916334572c57a915798f3dc455846ef335e88a6986ad067070af"
+                     }
+                   ]
+                 },
+@@ -460,6 +460,14 @@
+                             }
+                           ]
+                         }
++                      },
++                      {
++                        "key": {
++                          "symbol": "LNONCE"
++                        },
++                        "val": {
++                          "u64": 1
++                        }
+                       }
+                     ]
+                   }
+diff --git a/contracts/stellarkraal/tests/lifecycle_simulation.rs b/contracts/stellarkraal/tests/lifecycle_simulation.rs
+index 4bebf91..67e8c7e 100644
+--- a/contracts/stellarkraal/tests/lifecycle_simulation.rs
++++ b/contracts/stellarkraal/tests/lifecycle_simulation.rs
+@@ -18,6 +18,7 @@
+ //! 4. `scenario_rejected_requests_leave_state_untouched` — rejected actions
+ //! 5. `scenario_forced_liquidation_after_interest_accrual` — forced close
+ //! 6. `scenario_partial_oracle_recovery_after_staleness` — partial quorum
++//! 7. `scenario_same_ledger_reopen_preserves_closed_loan` — loan ID collision regression
+ 
+ #![cfg(test)]
+ 
+@@ -397,3 +398,54 @@ fn scenario_partial_oracle_recovery_after_staleness() {
+     client.submit_price(&actors.oracle_3, &112_000);
+     assert_eq!(client.get_price(), 111_000);
+ }
++
++// ── Scenario 7: same-ledger reopen identity ────────────────────────────────
++
++/// Closing and reopening a loan for the same asset without advancing the
++/// ledger must create a fresh ID and preserve the first closed loan record.
++#[test]
++fn scenario_same_ledger_reopen_preserves_closed_loan() {
++    let sim = Sim::boot();
++    let (client, actors) = (&sim.client, &sim.actors);
++
++    let asset_id = client.register_asset(
++        &actors.farmer_a,
++        &symbol_short!("CATTLE"),
++        &symbol_short!("KR006"),
++        &1_000_000,
++    );
++    let ledger_sequence = sim.env.ledger().sequence();
++
++    let first_loan_id = client.open_loan(&actors.farmer_a, &asset_id, &500_000);
++    let first_open = client.get_loan(&first_loan_id);
++    assert_eq!(first_open.opened_at, ledger_sequence);
++
++    assert_eq!(
++        client.repay_loan(&actors.farmer_a, &first_loan_id, &first_open.balance),
++        0
++    );
++    let first_closed = client.get_loan(&first_loan_id);
++    assert!(!first_closed.active);
++    assert_eq!(first_closed.balance, 0);
++    assert!(!client.get_asset(&asset_id).on_loan);
++
++    let second_loan_id = client.open_loan(&actors.farmer_a, &asset_id, &500_000);
++
++    assert_eq!(sim.env.ledger().sequence(), ledger_sequence);
++    assert_ne!(first_loan_id, second_loan_id);
++
++    let first_after_reopen = client.get_loan(&first_loan_id);
++    assert!(!first_after_reopen.active);
++    assert_eq!(first_after_reopen.balance, 0);
++    assert_eq!(first_after_reopen.principal, first_closed.principal);
++    assert_eq!(first_after_reopen.borrower, first_closed.borrower);
++    assert_eq!(first_after_reopen.asset_id, first_closed.asset_id);
++    assert_eq!(first_after_reopen.opened_at, first_closed.opened_at);
++    assert_eq!(first_after_reopen.updated_at, first_closed.updated_at);
++
++    let second = client.get_loan(&second_loan_id);
++    assert!(second.active);
++    assert_eq!(second.opened_at, ledger_sequence);
++    assert_eq!(second.asset_id, asset_id);
++    assert!(client.get_asset(&asset_id).on_loan);
++}
