@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: Stellar-kraal/stellar-kraal-contract
-          ref: main
+          ref: cca5f033318f43cb9b18060d161873d75df58381
           path: upstream
           persist-credentials: false
 
@@ -51,34 +51,40 @@ jobs:
               raise SystemExit("expected exactly one CONFIG declaration")
           lib = lib.replace(config_decl, config_replacement, 1)
 
-          seed_block = '''        let mut seed = soroban_sdk::Bytes::new(&e);
-          for b in now.to_be_bytes() {
-              seed.push_back(b);
-          }
-          // mix in asset_id bytes for uniqueness
-          for b in asset_id.to_array() {
-              seed.push_back(b);
-          }
-          let loan_id: BytesN<32> = e.crypto().sha256(&seed).into();
-          '''
-          replacement = '''        let loan_nonce: u64 = e.storage().instance().get(&LOAN_NONCE).unwrap_or(0);
-          let next_loan_nonce = loan_nonce
-              .checked_add(1)
-              .ok_or(Error::ArithmeticError)?;
-          e.storage().instance().set(&LOAN_NONCE, &next_loan_nonce);
-
-          let mut seed = soroban_sdk::Bytes::new(&e);
-          for b in now.to_be_bytes() {
-              seed.push_back(b);
-          }
-          for b in asset_id.to_array() {
-              seed.push_back(b);
-          }
-          for b in next_loan_nonce.to_be_bytes() {
-              seed.push_back(b);
-          }
-          let loan_id: BytesN<32> = e.crypto().sha256(&seed).into();
-          '''
+          seed_block = "\n".join(
+              [
+                  "        let mut seed = soroban_sdk::Bytes::new(&e);",
+                  "        for b in now.to_be_bytes() {",
+                  "            seed.push_back(b);",
+                  "        }",
+                  "        // mix in asset_id bytes for uniqueness",
+                  "        for b in asset_id.to_array() {",
+                  "            seed.push_back(b);",
+                  "        }",
+                  "        let loan_id: BytesN<32> = e.crypto().sha256(&seed).into();",
+              ]
+          )
+          replacement = "\n".join(
+              [
+                  "        let loan_nonce: u64 = e.storage().instance().get(&LOAN_NONCE).unwrap_or(0);",
+                  "        let next_loan_nonce = loan_nonce",
+                  "            .checked_add(1)",
+                  "            .ok_or(Error::ArithmeticError)?;",
+                  "        e.storage().instance().set(&LOAN_NONCE, &next_loan_nonce);",
+                  "",
+                  "        let mut seed = soroban_sdk::Bytes::new(&e);",
+                  "        for b in now.to_be_bytes() {",
+                  "            seed.push_back(b);",
+                  "        }",
+                  "        for b in asset_id.to_array() {",
+                  "            seed.push_back(b);",
+                  "        }",
+                  "        for b in next_loan_nonce.to_be_bytes() {",
+                  "            seed.push_back(b);",
+                  "        }",
+                  "        let loan_id: BytesN<32> = e.crypto().sha256(&seed).into();",
+              ]
+          )
           if lib.count(seed_block) != 1:
               raise SystemExit("expected exactly one open_loan seed block")
           lib = lib.replace(seed_block, replacement, 1)
@@ -86,6 +92,9 @@ jobs:
 
           test_path = Path("upstream/contracts/stellarkraal/tests/lifecycle_simulation.rs")
           tests = test_path.read_text(encoding="utf-8")
+          if "fn scenario_same_ledger_reopen_preserves_closed_loan" in tests:
+              raise SystemExit("regression test already exists")
+
           scenario_line = (
               '//! 6. `scenario_partial_oracle_recovery_after_staleness` — partial quorum\n'
           )
@@ -150,8 +159,6 @@ jobs:
               assert!(client.get_asset(&asset_id).on_loan);
           }
           '''
-          if "scenario_same_ledger_reopen_preserves_closed_loan" in tests:
-              raise SystemExit("regression test already exists")
           tests = tests.rstrip() + regression + "\n"
           test_path.write_text(tests, encoding="utf-8")
           PY
@@ -179,15 +186,16 @@ jobs:
           git add -N .
           git diff --binary --no-ext-diff > ../stellar-kraal-94.patch
           git status --short > ../stellar-kraal-94-status.txt
+          upstream_sha="$(git rev-parse HEAD)"
           cd ..
 
           mkdir -p validation/stellar-kraal-94
           mv stellar-kraal-94.patch validation/stellar-kraal-94/
           mv stellar-kraal-94-status.txt validation/stellar-kraal-94/
-          cat > validation/stellar-kraal-94/VALIDATION.md <<EOF
+          cat > validation/stellar-kraal-94/VALIDATION.md <<'EOF'
           # Stellar Kraal issue #94 validation
 
-          Upstream: `Stellar-kraal/stellar-kraal-contract@main`
+          Upstream commit: `cca5f033318f43cb9b18060d161873d75df58381`
 
           Validated in GitHub Actions:
 
