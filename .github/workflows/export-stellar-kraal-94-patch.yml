@@ -1,0 +1,42 @@
+name: Export validated Stellar Kraal patch
+
+on:
+  push:
+    branches:
+      - validation/stellar-kraal-94
+
+permissions:
+  contents: write
+
+jobs:
+  export:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out validation branch
+        uses: actions/checkout@v4
+        with:
+          ref: validation/stellar-kraal-94
+          fetch-depth: 0
+
+      - name: Upload validated contribution bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: stellar-kraal-94-validated-patch
+          path: |
+            validation/stellar-kraal-94/stellar-kraal-94.patch
+            validation/stellar-kraal-94/stellar-kraal-94-status.txt
+            validation/stellar-kraal-94/VALIDATION.md
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Remove one-shot exporter
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/export-stellar-kraal-94-patch.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "ci: remove Stellar Kraal patch exporter"
+          git push origin HEAD:validation/stellar-kraal-94
